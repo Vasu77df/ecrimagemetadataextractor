@@ -1,18 +1,21 @@
 """
+Let's say you are building or running container, and you want to capture the
+docker manifest or the container metdata so that you can add it as part of your build
+SBOM, or just to capture it for tracking and reproducibility.
+
 Now how do we get this info?
-We could pull the docker image before OS build and extract that info.
-But that means we have to run docker in codebuild and also pull the container image
+We could pull the docker image within the running env and extract the info
+But that means we have to run docker in out environment and also pull the container image
 which is slow, and also unecessary.
 
 ECR follow the OCI container registry specification. This means we can curl against the container manifest,
-and get the same info we need, all api calls no downloads much faster.
+and get the same info we need, all api calls, no downloads much faster.
 
 This program does this.
 """
 
 import json
 from logging import Logger, getLogger
-from argparse import ArgumentParser
 from os import environ
 
 import boto3
@@ -22,7 +25,7 @@ logger: Logger = getLogger("ecrimagemetadataextractor")
 
 
 class EcrImageMetadataExtractor:
-    def __init__(self, image_uri: str, region: str) -> None:
+    def __init__(self, image_uri: str | None, region: str | None) -> None:
         self.region = region
         # Create a Boto3 session we do this to specific the region we want to start the session against
         self.boto3_session = boto3.Session(region_name=region)
@@ -33,9 +36,9 @@ class EcrImageMetadataExtractor:
         # The default TTL for the ECR auth token is 12 hrs which is more the sufficient for this program
         self.auth_token = self.get_registry_auth_token()
 
-    def parse_ecr_image(self, image_name: str) -> tuple[str, str, str, str]:
+    def parse_ecr_image(self, image_name: str | None) -> tuple[str, str, str, str]:
         """
-        Parses an ECR image name from an Private ECR registry and returns the registry, repository, and tag.
+        Parses an private ECR image uri from an Private ECR registry and returns the registry, repository, and tag.
 
         Args:
             image_name: name of image from private ECR container registry
@@ -109,20 +112,21 @@ class EcrImageMetadataExtractor:
         response = requests.get(request_url, headers=request_headers)
 
         if response.status_code == 200:
-            logger.info("Container Image manifest retrieved successfully!")
-            manifest = json.loads(response.text)
-            digest = manifest["config"]["digest"]
-            return digest
+            logger.debug("Container Image manifest retrieved successfully!")
+            manifest = (json.loads(response.text))
+            manifest_jsonified = json.dumps(manifest)
+            return manifest_jsonified
         else:
             logger.error(
                 f"Failed to retrieve Docker image manifest. Status code: {response.status_code}")
             logger.error(f"The error response: {response.text}")
             logger.error(
-                "We need this to proceed or we can't track what's in your OS image exiting, check your ECR repo, the region for mismatches, Your codebuild role policy, ensure you have permissions to curl the repo"
+                "Check your ECR repo uri, the region for mismatches, your role policy, and ensure you have right \
+                permissions"
             )
             exit(1)
 
-    def get_digest_manifest(self, digest: str) -> dict:
+    def get_digest_manifest(self, digest: str) -> str:
         """
         Takes as argument the first digest sh256 of the container returned from the manifest
 
@@ -144,34 +148,61 @@ class EcrImageMetadataExtractor:
         metadata_response = requests.get(request_url, headers=request_headers)
 
         if metadata_response.status_code == 200:
-            logger.info("Container Image metadata retrieved successfully!")
-            metadata_dict = dict(json.loads(metadata_response.text))
-            logger.debug(f"This is the container metadata: \n {metadata_dict}")
-            return metadata_dict
+            logger.debug("Container Image metadata retrieved successfully!")
+            metadata = json.loads(metadata_response.text)
+            metadata_jsonified = json.dumps(metadata)
+            return metadata_jsonified
         else:
             logger.error(
                 f"Failed to retrieve Docker image metadata. Status code: {metadata_response.status_code}")
             logger.error(f"The error response: {metadata_response.text}")
             logger.error(
-                "We need this to proceed or we can't track what's in your OS image exiting, check your ECR repo, the region for mismatches, Your codebuild role policy, ensure you have permissions to curl the repo"
+                "Check your ECR repo uri, the region for mismatches, your role policy, and ensure you have right \
+                permissions"
             )
             exit(1)
 
 
-def capture_manifest(args: ArgumentParser) -> None:
-    if args.region is not None:
-        build_region = args.region
+def get_region(region: str) -> str | None:
+    if region is not None:
+        return region
     elif (aws_region := environ.get("AWS_REGION")) is not None:
-        build_region = aws_region
+        return aws_region
     else:
         logger.error(
-            "Could not get build region, either use the --region argument or set the AWS_REGION env variable with region")
+            "Could not get build region, either use the --region argument or set the AWS_REGION env variable with \
+            region")
         exit(1)
 
+
+def capture_manifest(image_uri: str, aws_region: str) -> None:
+    build_region = get_region(aws_region)
     container_metadata_fetcher = EcrImageMetadataExtractor(
-        args.image_id, build_region)
-    if (manifest_digest := container_metadata_fetcher.get_image_manifest_digest()) is not None:
-        logger.info(f"{manifest_digest}")
+        image_uri, build_region)
+    if (manifest := container_metadata_fetcher.get_image_manifest()) is not None:
+        print(f"{manifest}")
+    else:
+        logger.error(
+            "We could get the manifest, something went wrong look at the stack trace above.")
+        exit(1)
+
+
+def capture_image_metadata(image_uri: str, aws_region: str) -> None:
+    build_region = get_region(aws_region)
+    container_metadata_fetcher = EcrImageMetadataExtractor(
+        image_uri, build_region)
+    if (manifest := container_metadata_fetcher.get_image_manifest()) is not None:
+        try:
+            manifest_dict = json.loads(manifest)
+            digest = manifest_dict["config"]["digest"]
+            digest_metadata = container_metadata_fetcher.get_digest_manifest(
+                digest)
+            print(digest_metadata)
+        except KeyError as e:
+            logger.error(
+                "We could not get the digest from the container image manifest to retrieve metdata from")
+            logger.error(f"{e}")
+
     else:
         logger.error(
             "We could get the manifest, something went wrong look at the stack trace above.")
