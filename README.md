@@ -189,6 +189,15 @@ python3 -m ecrimagemetadataextractor get_digest_metadata --image-uri 77273894869
 }
 ```
 
+## How does this work?
+
+To pull metdata from a container layer, We could pull the docker image within the running environment and extract the info. But that means we have to run docker in our environment and also pull the container image which is slow, and also unecessary.
+
+ECR follow the OCI container registry specification. This means we can curl against the container manifest,
+and get the same info we need, all api calls, no downloads much faster.
+
+- https://specs.opencontainers.org/distribution-spec/?v=v1.0.0
+
 ## Managing the project
 
 I use [uv](https://docs.astral.sh/uv/) to manage this project. 

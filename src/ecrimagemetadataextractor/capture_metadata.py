@@ -5,7 +5,7 @@ SBOM, or just to capture it for tracking and reproducibility.
 
 Now how do we get this info?
 We could pull the docker image within the running env and extract the info
-But that means we have to run docker in out environment and also pull the container image
+But that means we have to run docker in our environment and also pull the container image
 which is slow, and also unecessary.
 
 ECR follow the OCI container registry specification. This means we can curl against the container manifest,
