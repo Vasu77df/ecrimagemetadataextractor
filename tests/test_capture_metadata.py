@@ -25,7 +25,11 @@ def ecr_extractor(mock_boto3_session):
     return EcrImageMetadataExtractor('123456789012.dkr.ecr.us-east-1.amazonaws.com/test-repo:latest', 'us-east-1')
 
 
-def test_parse_ecr_image():
+def test_parse_ecr_image(ecr_extractor):
+    ecr_extractor.account = '123456789012'
+    ecr_extractor.registry = '123456789012.dkr.ecr.us-east-1.amazonaws.com'
+    ecr_extractor.ecr_image_name = 'test-repo'
+    ecr_extractor.tag = "latest"
     extractor = EcrImageMetadataExtractor(
         '123456789012.dkr.ecr.us-east-1.amazonaws.com/test-repo:latest', 'us-east-1')
     assert extractor.account == '123456789012'
