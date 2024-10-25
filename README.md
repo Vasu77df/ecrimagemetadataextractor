@@ -32,10 +32,13 @@ options:
 ```
 
 ### Get manifest
-Command:
+
+**Command**:
 ```
- python3 -m ecrimagemetadataextractor get_manifest --image-uri 772738948692.dkr.ecr.us-east-1.amazonaws.com/os_build_env:latest --region us-east-1 | jq . 
+ecrimagemetadataextractor get_manifest --image-uri 772738948692.dkr.ecr.us-east-1.amazonaws.com/os_build_env:latest --region us-east-1 | jq . 
 ```
+
+**Output**:
 ```
 {
   "schemaVersion": 2,
@@ -86,8 +89,12 @@ Command:
 ```
 
 ### Get metadata from config digest
+**Command**:
 ```
-python3 -m ecrimagemetadataextractor get_digest_metadata --image-uri 772738948692.dkr.ecr.us-east-1.amazonaws.com/os_build_env:latest --region us-east-1 | jq .
+ecrimagemetadataextractor get_digest_metadata --image-uri 772738948692.dkr.ecr.us-east-1.amazonaws.com/os_build_env:latest --region us-east-1 | jq .
+```
+**Output**:
+```
 {
   "architecture": "amd64",
   "config": {
@@ -195,10 +202,12 @@ python3 -m ecrimagemetadataextractor get_digest_metadata --image-uri 77273894869
 
 ## How does this work?
 
-To pull metdata from a container layer, We could pull the docker image within the running environment and extract the info. But that means we have to run docker in our environment and also pull the container image which is slow, and also unecessary.
+To pull metdata from a container layer, we could pull the docker image within the running environment and extract the info. 
+
+But that means we have to run docker in our environment and also pull the container image which is slow, and also unecessary.
 
 ECR follow the OCI container registry specification. This means we can curl against the container manifest,
-and get the same info we need, all api calls, no downloads much faster.
+and get the same info we need, all api calls, no layer downloads, much faster.
 
 - https://specs.opencontainers.org/distribution-spec/?v=v1.0.0
 
@@ -206,7 +215,7 @@ and get the same info we need, all api calls, no downloads much faster.
 
 I use [uv](https://docs.astral.sh/uv/) to manage this project. 
 
-Here are some common things to run to manage the project 
+Here are some common commands to run to manage the project.
 
 - Setup an venv of the project
 ```
@@ -223,5 +232,9 @@ TODO: Fix the boto3 import error
 - Run unit tests
 
 ```
-uv run python -m pytest tests/
+uv run pytest
 ```
+
+## TODO
+- Make this generic and support any OCI complaint registry.
+  - Manage other auth mechansims
