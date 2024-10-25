@@ -38,7 +38,7 @@ def parse_args(args: List[str]) -> argparse.Namespace:
             \n 772738948692.dkr.ecr.us-east-1.amazonaws.com/os_build_env:latest", required=True
     )
     parser.add_argument(
-        "-r", "--region", help="aws region to use", required=False
+        "-r", "--region", help="aws region to use", required=False, default="us-east-1"
     )
     parsed_args = parser.parse_args(args)
 
