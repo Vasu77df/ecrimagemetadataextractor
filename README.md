@@ -1,13 +1,14 @@
 # ecrimagemetadataextractor
-Simple CLI tool to extract the image manifest and metadata from an container images stored in a private ECR registry
+Simple CLI tool to extract the image manifest and metadata from container images stored in a private AWS ECR registry
 
-## Premise
+## Motivation
 Take this scenario:
 - You are running a build job, or a task in a container for example in AWS CodeBuild.
 - While you are building the artifact you want to capture the details of the container you are using.
-- This can be used to add to your SBOM or just to capture data to check for reproducibility drifts.
+- You can capture the build environment metadata to your SBOM or just to capture metadata to check for reproducibility drifts or replicating the environment for troubleshooting.
 
-This is a cli tool you could run within your container or out-of-band to capture this container manifest and the metadata from the digest.
+This cli tool or library however you would like to use this, could be run within your container or out-of-band to capture a container's manifest and then it's metadata from the digest.
+
 
 ## Usage
 ```
@@ -31,8 +32,11 @@ options:
 ```
 
 ### Get manifest
+Command:
 ```
  python3 -m ecrimagemetadataextractor get_manifest --image-uri 772738948692.dkr.ecr.us-east-1.amazonaws.com/os_build_env:latest --region us-east-1 | jq . 
+```
+```
 {
   "schemaVersion": 2,
   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
